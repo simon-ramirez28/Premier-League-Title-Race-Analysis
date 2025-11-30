@@ -1,5 +1,6 @@
-2025-11-29 21:08:52 - INFO - --- Logging Configuration completed ---
-2025-11-29 21:08:53 - INFO - -- Dataframe Generated
-2025-11-29 21:08:53 - INFO - ---EXTRACTION COMPLETE---
-2025-11-29 21:08:53 - INFO - ---TRANSFORMATION PHASE: STARTED
-2025-11-29 21:08:53 - INFO - ---TRANSFORMATION COMPLETED---
+2025-11-29 21:32:57 - INFO - --- Logging Configuration completed ---
+2025-11-29 21:32:57 - INFO - --- EXTRACTION STARTED ---
+2025-11-29 21:32:58 - INFO - Dataframe generated: 20 rows
+2025-11-29 21:32:58 - INFO - --- TRANSFORMATION STARTED ---
+2025-11-29 21:32:58 - INFO - - - - Dataset saved on data/02_processed/pl_team_status_20251129.csv
+2025-11-29 21:32:58 - INFO - PROCESS COMPLETE. Dataset: (20, 10)
