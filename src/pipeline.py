@@ -1,5 +1,3 @@
-# Contenido de src/pipeline.py (Nueva versión para Yahoo Sports)
-
 import pandas as pd
 from datetime import date
 import os
@@ -14,19 +12,21 @@ from bs4 import BeautifulSoup
 
 # --- LOGGING CONFIGURATION ---
 import logging
-# Constantes (Actualizamos la ruta del log)
+# log Path
 LOGS_PATH = "logs/"
 
 def setup_logging(log_path: str = LOGS_PATH):
     """Logging Configuration = Custom Logging."""
     
+    #- If the route doesn't exist: create it
     if not os.path.exists(log_path):
         os.makedirs(log_path)
 
+    # -> Log Customization
     log_filename = f"pipeline_run_{date.today().strftime('%Y%m%d')}.log"
     log_filepath = os.path.join(log_path, log_filename)
     
-    # Configuración del logging
+    # Basic Config
     logging.basicConfig(
         filename=log_filepath,
         level=logging.INFO,
@@ -35,12 +35,12 @@ def setup_logging(log_path: str = LOGS_PATH):
         filemode='a' # 'a' (append) para añadir al archivo si ya existe
     )
     
-    # También configuramos un handler para que imprima en la consola
+    # Handler to print in the console too
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     
-    # Aseguramos que solo se añada una vez a la raíz
+    # Just add it ONE TIME
     if not logging.getLogger().handlers:
         logging.getLogger().addHandler(console_handler)
 
@@ -52,8 +52,10 @@ def setup_logging(log_path: str = LOGS_PATH):
 # Constantes (ACTUALIZADAS A PREMIER LEAGUE / YAHOO)
 URL_PREMIER_LEAGUE = "https://www.transfermarkt.com/premierleague/tabelle/wettbewerb/GB1"
 DATA_RAW_PATH = "data/01_raw/"
-SLEEP_TIME = 5 # Aumentamos un poco el tiempo para asegurar la carga completa de Yahoo
+DATA_PROCESSED_PATH = "data/02_processed/"
+SLEEP_TIME = 5 
 
+# Extraction
 def extract_data_dynamic(url: str = URL_PREMIER_LEAGUE, path: str = DATA_RAW_PATH) -> pd.DataFrame:
     """
     Extract the table from the page
@@ -102,10 +104,76 @@ def extract_data_dynamic(url: str = URL_PREMIER_LEAGUE, path: str = DATA_RAW_PAT
     df = pd.DataFrame(rows)
     logging.info("-- Dataframe Generated")
     print(df)
+    return df
 
+# Transformation
+def transform_data_cleanup(df_raw: pd.DataFrame) -> pd.DataFrame:
+    """Cleaning and transformation phase"""
 
-if __name__ == "__main__":
+    df = df_raw.copy() # A copy of the Dataframe
+
+    # Rename the columns
+    try:
+        df = df.rename(columns={
+            'Pos': 'Rank',
+            'Club': 'Club',
+            'P': 'MP', # Matches Played
+            'W': 'Wins',
+            'D': 'Ties',
+            'L': 'Loses',
+            'Goals': 'Goals_FA', # Format "24.6"
+            '+/-': 'GD_Raw', # Goal Difference
+            'Pts': 'Points'
+        })
+    except KeyError as e:
+        # Error management (ej. Unnamed: 0, Unnamed: 1)
+        logging.error(f"Error renaming: {e}. header is different.")
+        return pd.DataFrame()
+    
+    # Divide the Goals table ':'
+    df[['GF', 'GA']] = df['Goals_FA'].str.split(':', expand=True)
+    
+    # Columns that MUST be numeric
+    cols_to_numeric = ['Rank','MP', 'Wins', 'Ties', 'Loses', 'GF', 'GA', 'GD_Raw', 'Points']
+
+    for col in cols_to_numeric:
+        # Convert to numeric, forcing NaN errors
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # Calculate GD to confirm that's the same as 'GD_Raw'
+    df['GD'] = df['GF'] - df['GA']
+
+    # Eliminate original columns
+    df = df.drop(columns=['Goals_FA', 'GD_Raw'])
+    
+    # Make sure there are not null values on the target columns
+    df = df.dropna(subset=['Points', 'Club', 'MP']).reset_index(drop=True)
+    
+    # Reordenate the dataframe for clarity
+    df_cleaned = df[['Rank', 'Club', 'Points', 'MP', 'Wins', 'Ties', 'Loses', 'GF', 'GA', 'GD']]
+    
+    print(df_cleaned)
+
+    # Export the new dataset
+    file_path = os.path.join(DATA_PROCESSED_PATH, f"pl_team_status_{date.today().strftime('%Y%m%d')}.csv")
+    df_cleaned.to_csv(file_path, index=False)
+    print(f"New dataset saved at {file_path}")
+
+    return df_cleaned.info()
+
+# Loading - Load the info to a Database
+def loading_table():
+    return None
+
+def main():
     print("---EXTRACTION PHASE: STARTED---")
     setup_logging()
-    extract_data_dynamic()
+    df_raw = extract_data_dynamic()
     logging.info("---EXTRACTION COMPLETE---")
+    print("----------------------\n")
+    logging.info("---TRANSFORMATION PHASE: STARTED")
+    df_cleaned = transform_data_cleanup(df_raw)  
+    logging.info("---TRANSFORMATION COMPLETED---")
+
+if __name__ == "__main__":
+    main()
