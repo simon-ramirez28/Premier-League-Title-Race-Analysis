@@ -6,17 +6,17 @@ import requests
 import logging
 from typing import Optional
 
-# Importaciones de Selenium y BeautifulSoup
+# bs4 Library
 from bs4 import BeautifulSoup
 
-# --- CONSTANTES ---
+# --- Variables ---
 LOGS_PATH = "logs/"
 URL_PREMIER_LEAGUE = "https://www.transfermarkt.com/premierleague/tabelle/wettbewerb/GB1"
 DATA_RAW_PATH = "data/01_raw/"
 DATA_PROCESSED_PATH = "data/02_processed/"
 SLEEP_TIME = 5
 
-# --- LOGGING OPTIMIZADO ---
+# --- LOGGING ---
 def setup_logging(log_path: str = LOGS_PATH) -> None:
     """Logging Configuration"""
     
@@ -32,7 +32,7 @@ def setup_logging(log_path: str = LOGS_PATH) -> None:
         filemode='a'
     )
     
-    # Solo añadir handler si no existe
+    # Adding handler if doesn't exist 
     if not logging.getLogger().handlers:
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
@@ -41,7 +41,7 @@ def setup_logging(log_path: str = LOGS_PATH) -> None:
 
     logging.info("--- Logging Configuration completed ---")
 
-# --- EXTRACCIÓN OPTIMIZADA ---
+# --- Extraction ---
 def extract_data_dynamic(url: str = URL_PREMIER_LEAGUE) -> pd.DataFrame:
     """Extraction of the table from the website"""
     
@@ -77,7 +77,7 @@ def extract_data_dynamic(url: str = URL_PREMIER_LEAGUE) -> pd.DataFrame:
     logging.info(f"Dataframe generated: {len(df)} rows")
     return df
 
-# --- TRANSFORMACIÓN OPTIMIZADA ---
+# --- Transformation --- 
 def transform_data_cleanup(df_raw: pd.DataFrame) -> Optional[pd.DataFrame]:
     """Cleaning and transformation of the data"""
     
@@ -85,7 +85,7 @@ def transform_data_cleanup(df_raw: pd.DataFrame) -> Optional[pd.DataFrame]:
         logging.warning("Empty Dataframe Received")
         return None
     
-    # Renombrar columnas en una sola operación
+    # Rename columns
     column_mapping = {
         'Pos': 'Rank', 'P': 'MP', 'W': 'Wins', 
         'D': 'Ties', 'L': 'Loses', 'Goals': 'Goals_FA',
@@ -94,25 +94,25 @@ def transform_data_cleanup(df_raw: pd.DataFrame) -> Optional[pd.DataFrame]:
     
     df = df_raw.rename(columns=column_mapping)
     
-    # Dividir Goals y convertir a numérico en una operación
+    # Divide Goals and convert to numeric
     df[['GF', 'GA']] = df['Goals_FA'].str.split(':', expand=True)
     
-    # Conversión masiva a numérico
+    # CMasive conversion to numeric
     numeric_cols = ['Rank', 'MP', 'Wins', 'Ties', 'Loses', 'GF', 'GA', 'GD_Raw', 'Points']
     df[numeric_cols] = df[numeric_cols].apply(pd.to_numeric, errors='coerce')
     
-    # Calcular GD y eliminar columnas temporales
+    # Calculate GD and eliminate temp columns
     df['GD'] = df['GF'] - df['GA']
     df = df.drop(columns=['Goals_FA', 'GD_Raw'])
     
-    # Limpieza final
+    # Final cleaning
     df = df.dropna(subset=['Points', 'Club', 'MP']).reset_index(drop=True)
     
-    # Reordenar columnas
+    # Reorder columns
     final_cols = ['Rank', 'Club', 'Points', 'MP', 'Wins', 'Ties', 'Loses', 'GF', 'GA', 'GD']
     df_cleaned = df[final_cols]
     
-    # Guardar archivo
+    # Save file
     file_path = os.path.join(DATA_PROCESSED_PATH, f"pl_team_status_{date.today().strftime('%Y%m%d')}.csv")
     os.makedirs(DATA_PROCESSED_PATH, exist_ok=True)
     df_cleaned.to_csv(file_path, index=False)
@@ -120,7 +120,7 @@ def transform_data_cleanup(df_raw: pd.DataFrame) -> Optional[pd.DataFrame]:
     logging.info(f"- - - Dataset saved on {file_path}")
     return df_cleaned
 
-# --- FUNCIÓN PRINCIPAL OPTIMIZADA ---
+# --- MAIN FUNCTION ---
 def main() -> None:
     """Main function"""
     setup_logging()
