@@ -5,6 +5,8 @@ import time
 import requests
 import logging
 from typing import Optional
+from dotenv import load_dotenv
+import mysql.connector
 
 # bs4 Library
 from bs4 import BeautifulSoup
@@ -45,10 +47,12 @@ def setup_logging(log_path: str = LOGS_PATH) -> None:
 def extract_data_dynamic(url: str = URL_PREMIER_LEAGUE) -> pd.DataFrame:
     """Extraction of the table from the website"""
     
+    # Beginning to Scrap
     headers = {"User-Agent": "Mozilla/5.0"}
     res = requests.get(url, headers=headers)
     soup = BeautifulSoup(res.text, "html.parser")
     
+    # Find the table
     table = soup.find("table", class_="items")
     if not table:
         logging.error("Table not found")
@@ -120,21 +124,65 @@ def transform_data_cleanup(df_raw: pd.DataFrame) -> Optional[pd.DataFrame]:
     logging.info(f"- - - Dataset saved on {file_path}")
     return df_cleaned
 
-# --- MAIN FUNCTION ---
-def main() -> None:
-    """Main function"""
-    setup_logging()
-    
-    logging.info("--- EXTRACTION STARTED ---")
-    df_raw = extract_data_dynamic()
-    
-    logging.info("--- TRANSFORMATION STARTED ---")
-    df_cleaned = transform_data_cleanup(df_raw)
-    
-    if df_cleaned is not None:
-        logging.info(f"PROCESS COMPLETE. Dataset: {df_cleaned.shape}")
-    else:
-        logging.error("THE PROCESS FAILED - Empty Dataframe")
+# Loading to a database
+def loading_data(df_cleaned: pd.DataFrame):
+    # Get credentials
+    load_dotenv()
 
-if __name__ == "__main__":
-    main()
+    DB_CONFIG = {
+        "host" : os.getenv("DB_HOST"),
+        "user" : os.getenv("DB_USER"),
+        "password" : os.getenv("DB_PASSWORD"),
+        "database" : os.getenv("DB_NAME"),
+        "port" : os.getenv("DB_PORT")
+    }
+
+    # Loading
+    try:
+        # Connecting
+        connection = mysql.connector.connect(**DB_CONFIG)
+        cursor = connection.cursor()
+        logging.info("Database connected SUCCESFULLY")
+
+        logging.info("Adding Data...")
+        TABLE_NAME = 'premier_league_data'
+
+        # Query
+        query = f"""
+        INSERT INTO {TABLE_NAME} (ranking, club, points, mp, wins, draws, loses, gf, ga, gd) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        
+        # preparing data
+        rows_to_insert = []
+        for index, row in df_cleaned.iterrows():
+            data = (
+                int(row['Rank']),
+                row['Club'],
+                int(row['Points']),
+                int(row['MP']),
+                int(row['Wins']),
+                int(row['Ties']),
+                int(row['Loses']),
+                int(row['GF']),
+                int(row['GA']),
+                int(row['GD'])
+            )
+            rows_to_insert.append(data)
+
+        # Execute the insertion
+        cursor.executemany(query, rows_to_insert)
+
+        # Confirm
+        connection.commit()
+        logging.info(f"Loading Succesfull. {cursor.rowcount} rows inserted.")
+    except mysql.connector.Error as err:
+        logging.error(f"ERROR UPLOADING DATA TO DATABASE: {err}", exc_info=True)
+        if 'connection' in locals() and connection.is_connected():
+            connection.rollback()
+    finally:
+        # 4. Asegurarse de cerrar la conexión
+        if 'connection' in locals() and connection:
+            cursor.close()
+            connection.close()
+            logging.info("MySQL connection closed")

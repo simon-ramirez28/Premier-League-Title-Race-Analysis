@@ -1,0 +1,11 @@
+2025-12-06 19:17:32 - INFO - --- Logging Configuration completed ---
+2025-12-06 19:17:32 - INFO - --- EXTRACTION STARTED ---
+2025-12-06 19:17:34 - INFO - Dataframe generated: 20 rows
+2025-12-06 19:17:34 - INFO - --- TRANSFORMATION STARTED ---
+2025-12-06 19:17:34 - INFO - - - - Dataset saved on data/02_processed/pl_team_status_20251206.csv
+2025-12-06 19:17:34 - INFO - TRANSFORMATION COMPLETE. Dataset: (20, 10)
+2025-12-06 19:17:34 - INFO - --- LOADING DATA ---
+2025-12-06 19:17:34 - INFO - Database connected SUCCESFULLY
+2025-12-06 19:17:34 - INFO - Adding Data...
+2025-12-06 19:17:35 - INFO - Loading Succesfull. 20 rows inserted.
+2025-12-06 19:17:35 - INFO - MySQL connection closed
