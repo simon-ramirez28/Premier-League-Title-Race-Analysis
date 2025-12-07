@@ -137,6 +137,8 @@ def loading_data(df_cleaned: pd.DataFrame):
         "port" : os.getenv("DB_PORT")
     }
 
+    load_date = date.today().strftime("%Y-%m-%d")
+
     # Loading
     try:
         # Connecting
@@ -149,14 +151,15 @@ def loading_data(df_cleaned: pd.DataFrame):
 
         # Query
         query = f"""
-        INSERT INTO {TABLE_NAME} (ranking, club, points, mp, wins, draws, loses, gf, ga, gd) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO {TABLE_NAME} (load_date, ranking, club, points, mp, wins, draws, loses, gf, ga, gd) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         # preparing data
         rows_to_insert = []
         for index, row in df_cleaned.iterrows():
             data = (
+                load_date,
                 int(row['Rank']),
                 row['Club'],
                 int(row['Points']),
